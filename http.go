@@ -131,7 +131,7 @@ func getChapterContent(chapterID string) (string, string, bool) {
 	}
 	validChapterNum++
 	content = decode(content, contentKey)
-	return chapterTitle, chapterTitle + "\n\n" + content + "\n\n\n\n", true
+	return chapterTitle, content + "\n\n\n\n", true
 }
 
 //下载索引
