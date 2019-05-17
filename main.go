@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"strconv"
 )
@@ -21,9 +22,11 @@ func main() {
 		localToken := getSection("token")["token"]
 		loginByToken(localToken)
 	}
-	fmt.Print("请输入要下载的书籍的书号：")
-	fmt.Scanln(&bookID)
-	bookName = getBookName()
+	flag.StringVar(&downloadType, "t", "txt", "下载类型，可选 txt 或 epub")
+	flag.StringVar(&bookID, "b", "", "bookID，请在对应网页 url 中获取")
+	flag.Parse()
+	getBookInfo()
+	bookTmpPath = path.tmp + "/" + bookName + "/"
 	fmt.Println("《" + bookName + "》")
 	rolls, rollNum := getBookRolls()
 	chapterIDs, chapterNum := getChapters(rolls)

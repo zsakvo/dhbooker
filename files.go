@@ -24,7 +24,7 @@ func mergeTemp() bool {
 		os.MkdirAll(path.out, os.ModePerm)
 	}
 	outPath := path.out + "/" + bookName + ".txt"
-	tmpPath := path.tmp + "/" + bookName + "/"
+	tmpPath := bookTmpPath
 	for _, cid := range chapterIDs {
 		d, err := ioutil.ReadFile(tmpPath + cid.String() + ".txt")
 		if err == nil {
@@ -56,4 +56,16 @@ func destoryTemp() error {
 		}
 	}
 	return nil
+}
+
+//写出内容
+func writeOut(content, dirPath, fileName string) {
+	if !isFileExist(dirPath) {
+		err := os.MkdirAll(dirPath, os.ModePerm)
+		check(err)
+	}
+	outPath := dirPath + fileName
+	d := []byte(content)
+	err := ioutil.WriteFile(outPath, d, 0644)
+	check(err)
 }
