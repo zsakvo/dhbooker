@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -39,7 +40,10 @@ func mergeTemp() bool {
 }
 
 //移除缓存
-func destoryTemp() error {
+func destoryTemp(b bool) error {
+	if b {
+		fmt.Println("正在清理临时目录")
+	}
 	d, err := os.Open(path.tmp)
 	if err != nil {
 		return err
@@ -54,6 +58,9 @@ func destoryTemp() error {
 		if err != nil {
 			return err
 		}
+	}
+	if !b {
+		fmt.Print("\n下载完毕")
 	}
 	return nil
 }

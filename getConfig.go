@@ -48,7 +48,7 @@ func getAccountSettings() accountSettings {
 	return aStruct
 }
 
-func getPathSettings() pathSettings {
+func getPathSettings() {
 	pathMap := getSection("path")
 	var aStruct pathSettings
 	aStruct.tmp = pathMap["tmp"]
@@ -61,7 +61,7 @@ func getPathSettings() pathSettings {
 		fmt.Println("请于 conf.ini 中填写输出目录路径")
 		os.Exit(1)
 	}
-	return aStruct
+	path = aStruct
 }
 
 func getToken() string {
@@ -85,4 +85,9 @@ func initSettings() {
 	cfg.SetKeyComments("path", "out", "# 输出目录，必填")
 	err1 := goconfig.SaveConfigFile(cfg, "conf.ini")
 	check(err1)
+}
+
+func initConfig() {
+	getConfig()
+	getPathSettings()
 }

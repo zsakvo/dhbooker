@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/schollz/progressbar"
@@ -89,6 +90,12 @@ func getBookInfo() {
 	bookName = gjson.Get(body, "data.book_info.book_name").String()
 	bookAuthor = gjson.Get(body, "data.book_info.author_name").String()
 	bookCoverURL = gjson.Get(body, "data.book_info.cover").String()
+	bookTmpPath = path.tmp + "/" + bookName + "/"
+	fmt.Println("《" + bookName + "》")
+	rolls, rollNum = getBookRolls()
+	chapterIDs, chapterNum = getChapters(rolls)
+	bookChapterNum = chapterNum
+	fmt.Println("共" + strconv.Itoa(rollNum) + "卷，" + strconv.Itoa(chapterNum) + "章")
 }
 
 //获取分卷信息
@@ -199,4 +206,18 @@ func downloadChapters(chapterIDs []gjson.Result) {
 		mergeTemp()
 	}
 	bar.Finish()
+}
+
+func login() {
+	fmt.Println("正在检查凭证")
+	token := getToken()
+	if len(token) == 0 {
+		fmt.Println("无凭证，尝试使用用户密码登入")
+		account := getAccountSettings()
+		loginByPass(account)
+	} else {
+		fmt.Println("尝试使用上次凭证登入")
+		localToken := getSection("token")["token"]
+		loginByToken(localToken)
+	}
 }

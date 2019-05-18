@@ -22,17 +22,17 @@ var bookChapterNum int
 var validChapterNum int
 var invalidChapterID []string
 var chapterTitles []string
-var chapterIDs []gjson.Result
+
+// var chapterIDs []gjson.Result
 var validChapterIDs []string
 var chapters sync.Map
 var invalidChapters sync.Map
 var bookTmpPath string
+var rolls []gjson.Result
+var rollNum int
+var chapterIDs []gjson.Result
+var chapterNum int
 
-// var chapters map[string]string
-// var counter = struct{
-//     sync.RWMutex
-//     chapters map[string]string
-// }
 var bar progressbar.ProgressBar
 
 var token ctoken
@@ -53,4 +53,14 @@ type accountSettings struct {
 type pathSettings struct {
 	tmp string
 	out string
+}
+
+type book struct {
+	format          string
+	coverURL        string
+	id              string
+	name            string
+	author          string
+	chapters        sync.Map
+	invalidChapters sync.Map
 }
