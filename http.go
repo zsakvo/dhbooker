@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -16,8 +17,12 @@ import (
 var quit = make(chan int)
 
 func httpGet(url string, paramsMap map[string]string) string {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	client := http.Client{
-		Timeout: time.Duration(ping * int64(time.Millisecond)),
+		Transport: tr,
+		Timeout:   time.Duration(ping * int64(time.Millisecond)),
 	}
 	request, err := http.NewRequest("GET", url, nil)
 	request.Header.Set("User-Agent", "dhbooker")
@@ -37,8 +42,12 @@ func httpGet(url string, paramsMap map[string]string) string {
 }
 
 func httpPost(url string, content string) string {
+	tr := &http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
 	client := http.Client{
-		Timeout: time.Duration(ping * int64(time.Millisecond)),
+		Transport: tr,
+		Timeout:   time.Duration(ping * int64(time.Millisecond)),
 	}
 	request, err := http.NewRequest("POST", url, strings.NewReader(content))
 	request.Header.Add("Content-Type", "application/x-www-form-urlencoded")
