@@ -12,6 +12,7 @@ const appVersion = "2.1.032"
 const initEncryptKey = "zG2nSeEfSHfvTCHy5LCcqtBbQehKNLXn"
 
 var bar progressbar.ProgressBar
+var ping int64
 var book cbook
 var token ctoken
 var path pathSettings
