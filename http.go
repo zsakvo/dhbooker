@@ -222,7 +222,6 @@ func downloadChapters() {
 	}
 	<-quit
 	if book.format == "epub" {
-		println(pathSeparator)
 		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
 		coverBody := httpGet(book.coverURL, nil)
 		writeOut(mimetype, book.tmpPath, "mimetype")
