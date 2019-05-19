@@ -42,11 +42,15 @@ func compressEpub(tmp, dst string) error {
 		if path == tmp {
 			return
 		}
-		fh.Name = strings.TrimPrefix(strings.Replace(path, tmp, "", -1), string(filepath.Separator))
+
+		s := strings.Replace(path, tmp, "", -1)
+		s = strings.TrimPrefix(s, pathSeparator)
+		s = strings.Replace(s, "\\", "/", -1)
+		fh.Name = s
 
 		// 这步开始没有加，会发现解压的时候说它不是个目录
 		if fi.IsDir() {
-			fh.Name += "/"
+			fh.Name += pathSeparator
 		}
 
 		// 写入文件信息，并返回一个 Write 结构

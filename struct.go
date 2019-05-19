@@ -1,6 +1,7 @@
 package main
 
 import (
+	"runtime"
 	"sync"
 
 	"github.com/Unknwon/goconfig"
@@ -10,6 +11,9 @@ import (
 
 const appVersion = "2.1.032"
 const initEncryptKey = "zG2nSeEfSHfvTCHy5LCcqtBbQehKNLXn"
+
+var ostype = runtime.GOOS
+var pathSeparator string
 
 var bar progressbar.ProgressBar
 var ping int64

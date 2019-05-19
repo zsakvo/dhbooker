@@ -24,7 +24,7 @@ func mergeTemp() {
 	if !isFileExist(path.out) {
 		os.MkdirAll(path.out, os.ModePerm)
 	}
-	outPath := path.out + "/" + book.name + ".txt"
+	outPath := path.out + pathSeparator + book.name + ".txt"
 	tmpPath := book.tmpPath
 	for _, cid := range book.chapterIDs {
 		d, err := ioutil.ReadFile(tmpPath + cid.String() + ".txt")

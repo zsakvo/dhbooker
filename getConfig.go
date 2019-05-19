@@ -90,4 +90,11 @@ func initSettings() {
 func initConfig() {
 	getConfig()
 	getPathSettings()
+	if ostype == "windows" {
+		pathSeparator = "\\"
+	} else if ostype == "linux" {
+		pathSeparator = "/"
+	} else if ostype == "darwin" {
+		pathSeparator = "/"
+	}
 }

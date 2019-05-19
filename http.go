@@ -124,7 +124,7 @@ func getBookInfo() {
 	book.name = gjson.Get(body, "data.book_info.book_name").String()
 	book.author = gjson.Get(body, "data.book_info.author_name").String()
 	book.coverURL = gjson.Get(body, "data.book_info.cover").String()
-	book.tmpPath = path.tmp + "/" + book.name + "/"
+	book.tmpPath = path.tmp + pathSeparator + book.name + pathSeparator
 	fmt.Println("《" + book.name + "》")
 	getBookRolls()
 	getChapters()
@@ -196,7 +196,7 @@ func writeChapterTemp(chapterID string) {
 	var tmpPath string
 	var fileName string
 	if book.format == "epub" {
-		tmpPath = book.tmpPath + "OEBPS" + "/"
+		tmpPath = book.tmpPath + "OEBPS" + pathSeparator
 		fileName = "chapter" + chapterID + ".html"
 	} else {
 		tmpPath = book.tmpPath
@@ -222,17 +222,18 @@ func downloadChapters() {
 	}
 	<-quit
 	if book.format == "epub" {
+		println(pathSeparator)
 		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
 		coverBody := httpGet(book.coverURL, nil)
 		writeOut(mimetype, book.tmpPath, "mimetype")
-		writeOut(container, book.tmpPath+"META-INF/", "container.xml")
-		writeOut(coverElement, book.tmpPath+"OEBPS/", "cover.html")
-		writeOut(coverBody, book.tmpPath+"OEBPS/", "cover.jpg")
-		writeOut(css, book.tmpPath+"OEBPS/", "style.css")
-		writeOut(genBookToc(), book.tmpPath+"OEBPS/", "book-toc.html")
-		writeOut(genContentOpf(), book.tmpPath+"OEBPS/", "content.opf")
-		writeOut(genTocNcx(), book.tmpPath+"OEBPS/", "toc.ncx")
-		compressEpub(book.tmpPath, path.out+"/"+book.name+".epub")
+		writeOut(container, book.tmpPath+"META-INF"+pathSeparator, "container.xml")
+		writeOut(coverElement, book.tmpPath+"OEBPS"+pathSeparator, "cover.html")
+		writeOut(coverBody, book.tmpPath+"OEBPS"+pathSeparator, "cover.jpg")
+		writeOut(css, book.tmpPath+"OEBPS"+pathSeparator, "style.css")
+		writeOut(genBookToc(), book.tmpPath+"OEBPS"+pathSeparator, "book-toc.html")
+		writeOut(genContentOpf(), book.tmpPath+"OEBPS"+pathSeparator, "content.opf")
+		writeOut(genTocNcx(), book.tmpPath+"OEBPS"+pathSeparator, "toc.ncx")
+		compressEpub(book.tmpPath, path.out+pathSeparator+book.name+".epub")
 	} else {
 		mergeTemp()
 	}
