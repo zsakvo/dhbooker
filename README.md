@@ -1,7 +1,49 @@
 # dhbooker
 
-This application can help you to download books from ciweimao.com.
+## 简介：
 
-You need to execute `./dhbooker` to generate a `conf.ini` file in the same path witn your binary, and write your account's username and password in it at least first.
+刺猬猫（欢乐书客）小说网站书籍下载工具。
 
-Then, please run `./dhbooker -b bookID -t epub` to download `epub` files or `./dhbooker -b bookID` to download `txt` files.
+- 程序本体使用 golang 编写，所以编译后体积较大
+
+- 使用其 Android 客户端接口，所以需要自行配置账户密码
+
+- 支持已购买的付费章节内容获取
+
+- 支持导出格式：txt，epub（不确定是否会继续增加）
+
+- 支持自定义导出目录
+
+- 支持自定义超时时间（单位 ms）
+
+## 使用方法
+
+- 程序需要在终端（terminal/powershell/cmd）内运行，请不要直接双加运行。
+
+- 第一次使用时请先直接运行一下程序初始化配置文件 `conf.ini` ，或者直接下载 [此文件]("https://raw.githubusercontent.com/zsakvo/dhbooker/master/conf.example.ini") 放入和程序的同级目录下。
+
+- 按提示填写好 `conf.ini` 中的必要字段（用户名 & 密码）
+
+- 在当前目录启动终端，执行
+
+```
+./dhbooker -b BookID -t Type -p TimeOut
+
+#dhbooker 代表具体的可执行文件名，请酌情修改
+
+#bookID 可以在书籍网页 Url 中找到
+
+#Type 有两种，分为 txt 以及 epub，如果不填写则默认 txt
+
+#TimeOut 为超时时间，单位毫秒，默认值 5000
+```
+
+- 等待提示下载完毕即可
+
+## 注意事项
+
+- 程序运行时会清空缓存目录，请务必不要将其它文件放入其中
+
+- 目前 epub 的章节顺序是按照作者发布时间排序，可能存在某些番外章节插入正文之间的情况，后面的版本会修改这一机制
+
+- 本程序仅支持获取免费与您已付费订阅的内容，不具备任何白嫖付费章节的作用
