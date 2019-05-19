@@ -19,24 +19,21 @@ func isFileExist(filePath string) bool {
 }
 
 //合并缓存
-func mergeTemp() bool {
+func mergeTemp() {
 	var content []byte
 	if !isFileExist(path.out) {
 		os.MkdirAll(path.out, os.ModePerm)
 	}
-	outPath := path.out + "/" + bookName + ".txt"
-	tmpPath := bookTmpPath
-	for _, cid := range chapterIDs {
+	outPath := path.out + "/" + book.name + ".txt"
+	tmpPath := book.tmpPath
+	for _, cid := range book.chapterIDs {
 		d, err := ioutil.ReadFile(tmpPath + cid.String() + ".txt")
 		if err == nil {
 			content = append(content, d...)
 		}
 	}
 	err1 := ioutil.WriteFile(outPath, content, 0644)
-	if err1 != nil {
-		return false
-	}
-	return true
+	check(err1)
 }
 
 //移除缓存

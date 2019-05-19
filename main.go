@@ -6,6 +6,6 @@ func main() {
 	destoryTemp(true)
 	login()
 	getBookInfo()
-	downloadChapters(chapterIDs)
+	downloadChapters()
 	destoryTemp(false)
 }

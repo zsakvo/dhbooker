@@ -11,30 +11,8 @@ import (
 const appVersion = "2.1.032"
 const initEncryptKey = "zG2nSeEfSHfvTCHy5LCcqtBbQehKNLXn"
 
-var downloadType string
-var bookCoverURL string
-var tocNcx string
-var contentOpf string
-var bookID string
-var bookName string
-var bookAuthor string
-var bookChapterNum int
-var validChapterNum int
-var invalidChapterID []string
-var chapterTitles []string
-
-// var chapterIDs []gjson.Result
-var validChapterIDs []string
-var chapters sync.Map
-var invalidChapters sync.Map
-var bookTmpPath string
-var rolls []gjson.Result
-var rollNum int
-var chapterIDs []gjson.Result
-var chapterNum int
-
 var bar progressbar.ProgressBar
-
+var book cbook
 var token ctoken
 var path pathSettings
 var config *goconfig.ConfigFile
@@ -55,12 +33,17 @@ type pathSettings struct {
 	out string
 }
 
-type book struct {
+type cbook struct {
 	format          string
 	coverURL        string
 	id              string
 	name            string
 	author          string
+	tmpPath         string
+	chapterNum      int
+	rollNum         int
 	chapters        sync.Map
 	invalidChapters sync.Map
+	chapterIDs      []gjson.Result
+	rolls           []gjson.Result
 }

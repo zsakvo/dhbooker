@@ -78,7 +78,7 @@ func loginByToken(localToken string) {
 
 //获取书籍名称
 func getBookInfo() {
-	bookInfoURL := "https://app.hbooker.com/book/get_info_by_id?module_id=&tab_type=&app_version=" + appVersion + "&recommend=&carousel_position=&book_id=" + bookID + "&login_token=" + token.loginToken + "&book_id=" + bookID + "&account=" + token.account
+	bookInfoURL := "https://app.hbooker.com/book/get_info_by_id?module_id=&tab_type=&app_version=" + appVersion + "&recommend=&carousel_position=&book_id=" + book.id + "&login_token=" + token.loginToken + "&book_id=" + book.id + "&account=" + token.account
 	body := httpGet(bookInfoURL)
 	body = decode(body, initEncryptKey)
 	code := gjson.Get(body, "code").String()
@@ -87,37 +87,34 @@ func getBookInfo() {
 		fmt.Println(tip)
 		os.Exit(1)
 	}
-	bookName = gjson.Get(body, "data.book_info.book_name").String()
-	bookAuthor = gjson.Get(body, "data.book_info.author_name").String()
-	bookCoverURL = gjson.Get(body, "data.book_info.cover").String()
-	bookTmpPath = path.tmp + "/" + bookName + "/"
-	fmt.Println("《" + bookName + "》")
-	rolls, rollNum = getBookRolls()
-	chapterIDs, chapterNum = getChapters(rolls)
-	bookChapterNum = chapterNum
-	fmt.Println("共" + strconv.Itoa(rollNum) + "卷，" + strconv.Itoa(chapterNum) + "章")
+	book.name = gjson.Get(body, "data.book_info.book_name").String()
+	book.author = gjson.Get(body, "data.book_info.author_name").String()
+	book.coverURL = gjson.Get(body, "data.book_info.cover").String()
+	book.tmpPath = path.tmp + "/" + book.name + "/"
+	fmt.Println("《" + book.name + "》")
+	getBookRolls()
+	getChapters()
+	fmt.Println("共" + strconv.Itoa(book.rollNum) + "卷，" + strconv.Itoa(book.chapterNum) + "章")
 }
 
 //获取分卷信息
-func getBookRolls() ([]gjson.Result, int) {
-	url := "https://app.hbooker.com/book/get_division_list?app_version=" + appVersion + "&login_token=" + token.loginToken + "&book_id=" + bookID + "&account=" + token.account
+func getBookRolls() {
+	url := "https://app.hbooker.com/book/get_division_list?app_version=" + appVersion + "&login_token=" + token.loginToken + "&book_id=" + book.id + "&account=" + token.account
 	body := httpGet(url)
 	body = decode(body, initEncryptKey)
-	rolls := gjson.Get(body, "data.division_list.#.division_id").Array()
-	num := len(rolls)
-	return rolls, num
+	book.rolls = gjson.Get(body, "data.division_list.#.division_id").Array()
+	book.rollNum = len(book.rolls)
 }
 
 //获取章节信息
-func getChapters(rolls []gjson.Result) ([]gjson.Result, int) {
-	for _, roll := range rolls {
+func getChapters() {
+	for _, roll := range book.rolls {
 		content := "last_update_time=0&app_version=" + appVersion + "&division_id=" + roll.String() + "&login_token=" + token.loginToken + "&account=" + token.account
 		body := httpPost("https://app.hbooker.com/chapter/get_updated_chapter_by_division_id", content)
 		body = decode(body, initEncryptKey)
-		chapterIDs = append(chapterIDs, gjson.Get(body, "data.chapter_list.#.chapter_id").Array()...)
+		book.chapterIDs = append(book.chapterIDs, gjson.Get(body, "data.chapter_list.#.chapter_id").Array()...)
 	}
-	num := len(chapterIDs)
-	return chapterIDs, num
+	book.chapterNum = len(book.chapterIDs)
 }
 
 //获取章节内容
@@ -133,23 +130,22 @@ func getChapterContent(chapterID string) (string, string, bool) {
 	content := gjson.Get(contentBody, "data.chapter_info.txt_content").String()
 	auth := gjson.Get(contentBody, "data.chapter_info.auth_access").String()
 	if len(content) == 0 {
-		invalidChapters.Store(chapterID, "1")
+		book.invalidChapters.Store(chapterID, "1")
 		return "", "", false
 	}
 	if auth == "0" {
-		invalidChapters.Store(chapterID, "1")
+		book.invalidChapters.Store(chapterID, "1")
 		return "", "", false
 	}
-	validChapterNum++
+	// validChapterNum++
 	content = decode(content, contentKey)
-	validChapterIDs = append(validChapterIDs, chapterID)
-	if downloadType == "epub" {
+	// validChapterIDs = append(validChapterIDs, chapterID)
+	if book.format == "epub" {
 		titleElement := "<h2 id=\"title\" class=\"titlel2std\">" + chapterTitle + "</h2>"
 		content = strings.Replace(content, "　　", "<p class=\"a\">　　", -1)
 		content = strings.Replace(content, "\n", "</p>", -1)
-		chapterTitles = append(chapterTitles, chapterTitle)
-		// chapters[chapterID] = chapterTitle
-		chapters.Store(chapterID, chapterTitle)
+		// chapterTitles = append(chapterTitles, chapterTitle)
+		book.chapters.Store(chapterID, chapterTitle)
 		return chapterTitle, contentHeader + "\n" + titleElement + "\n" + content + "\n" + contentFooter, true
 	}
 	return chapterTitle, chapterTitle + "\n\n" + content + "\n\n\n\n", true
@@ -162,11 +158,11 @@ var di int
 func writeChapterTemp(chapterID string) {
 	var tmpPath string
 	var fileName string
-	if downloadType == "epub" {
-		tmpPath = bookTmpPath + "OEBPS" + "/"
+	if book.format == "epub" {
+		tmpPath = book.tmpPath + "OEBPS" + "/"
 		fileName = "chapter" + chapterID + ".html"
 	} else {
-		tmpPath = bookTmpPath + "/"
+		tmpPath = book.tmpPath
 		fileName = chapterID + ".txt"
 	}
 	_, content, result := getChapterContent(chapterID)
@@ -174,34 +170,32 @@ func writeChapterTemp(chapterID string) {
 		writeOut(content, tmpPath, fileName)
 	}
 	bar.Add(1)
-	if di == bookChapterNum {
+	if di == book.chapterNum {
 		quit <- 1
 	}
 	di++
 }
 
 //下载章节
-func downloadChapters(chapterIDs []gjson.Result) {
+func downloadChapters() {
 	di = 1
-	bar = *progressbar.New(len(chapterIDs))
-	for _, chapterID := range chapterIDs {
+	bar = *progressbar.New(len(book.chapterIDs))
+	for _, chapterID := range book.chapterIDs {
 		go writeChapterTemp(chapterID.String())
 	}
 	<-quit
-	if downloadType == "epub" {
-		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + bookName + "\" />" + coverFooter
-		coverBody := httpGet(bookCoverURL)
-		writeOut(mimetype, bookTmpPath, "mimetype")
-		writeOut(container, bookTmpPath+"/META-INF/", "container.xml")
-		writeOut(coverElement, bookTmpPath+"/OEBPS/", "cover.html")
-		writeOut(coverBody, bookTmpPath+"/OEBPS/", "cover.jpg")
-		writeOut(css, bookTmpPath+"/OEBPS/", "style.css")
-		writeOut(genBookToc(), bookTmpPath+"/OEBPS/", "book-toc.html")
-		writeOut(genContentOpf(), bookTmpPath+"/OEBPS/", "content.opf")
-		writeOut(genTocNcx(), bookTmpPath+"/OEBPS/", "toc.ncx")
-	}
-	if downloadType == "epub" {
-		compressEpub(bookTmpPath, path.out+"/"+bookName+".epub")
+	if book.format == "epub" {
+		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
+		coverBody := httpGet(book.coverURL)
+		writeOut(mimetype, book.tmpPath, "mimetype")
+		writeOut(container, book.tmpPath+"META-INF/", "container.xml")
+		writeOut(coverElement, book.tmpPath+"OEBPS/", "cover.html")
+		writeOut(coverBody, book.tmpPath+"OEBPS/", "cover.jpg")
+		writeOut(css, book.tmpPath+"OEBPS/", "style.css")
+		writeOut(genBookToc(), book.tmpPath+"OEBPS/", "book-toc.html")
+		writeOut(genContentOpf(), book.tmpPath+"OEBPS/", "content.opf")
+		writeOut(genTocNcx(), book.tmpPath+"OEBPS/", "toc.ncx")
+		compressEpub(book.tmpPath, path.out+"/"+book.name+".epub")
 	} else {
 		mergeTemp()
 	}
