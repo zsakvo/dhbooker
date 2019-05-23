@@ -16,7 +16,12 @@ import (
 
 var quit = make(chan int)
 
-func httpGet(url string, paramsMap map[string]string) string {
+func getBody(res *http.Response) (string, error) {
+	resBody, err := ioutil.ReadAll(res.Body)
+	return string(resBody), err
+}
+
+func httpGet(url string, paramsMap map[string]string) (*http.Response, error) {
 	tr := &http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 	}
@@ -25,6 +30,7 @@ func httpGet(url string, paramsMap map[string]string) string {
 		Timeout:   time.Duration(ping * int64(time.Millisecond)),
 	}
 	request, err := http.NewRequest("GET", url, nil)
+	check(err)
 	request.Header.Set("User-Agent", "dhbooker")
 	params := request.URL.Query()
 	if paramsMap != nil {
@@ -33,12 +39,13 @@ func httpGet(url string, paramsMap map[string]string) string {
 		}
 		request.URL.RawQuery = params.Encode()
 	}
-	response, err := client.Do(request)
-	check(err)
-	defer response.Body.Close()
-	body, err := ioutil.ReadAll(response.Body)
-	check(err)
-	return string(body)
+	return client.Do(request)
+	// check(err)
+	// defer response.Body.Close()
+	// return response,err
+	// body, err := ioutil.ReadAll(response.Body)
+	// check(err)
+	// return string(body)
 }
 
 func httpPost(url string, content string) string {
@@ -66,7 +73,12 @@ func loginByPass(account accountSettings) {
 	pass := account.password
 	url := "https://app.hbooker.com/signup/login"
 	paramsMap := map[string]string{"login_name": name, "app_version": appVersion, "passwd": pass}
-	body := httpGet(url, paramsMap)
+	res, err := httpGet(url, paramsMap)
+	if err != nil {
+		panic(err)
+	}
+	body, err := getBody(res)
+	check(err)
 	body = decode(body, initEncryptKey)
 	code := gjson.Get(body, "code").String()
 	switch {
@@ -92,7 +104,12 @@ func loginByToken(localToken string) {
 	token.account = gjson.Get(localToken, "reader_info.account").String()
 	url := "https://app.hbooker.com/reader/get_my_info"
 	paramsMap := map[string]string{"reader_id": token.readerID, "app_version": appVersion, "login_token": token.loginToken, "account": token.account}
-	body := httpGet(url, paramsMap)
+	res, err := httpGet(url, paramsMap)
+	if err != nil {
+		panic(err)
+	}
+	body, err := getBody(res)
+	check(err)
 	body = decode(body, initEncryptKey)
 	code := gjson.Get(body, "code").String()
 	if code != "100000" {
@@ -113,7 +130,12 @@ func getBookInfo() {
 	}
 	bookInfoURL := "https://app.hbooker.com/book/get_info_by_id"
 	paramsMap := map[string]string{"app_version": appVersion, "login_token": token.loginToken, "book_id": book.id, "account": token.account}
-	body := httpGet(bookInfoURL, paramsMap)
+	res, err := httpGet(bookInfoURL, paramsMap)
+	if err != nil {
+		panic(err)
+	}
+	body, err := getBody(res)
+	check(err)
 	body = decode(body, initEncryptKey)
 	code := gjson.Get(body, "code").String()
 	if code != "100000" {
@@ -135,7 +157,12 @@ func getBookInfo() {
 func getBookRolls() {
 	url := "https://app.hbooker.com/book/get_division_list"
 	paramsMap := map[string]string{"app_version": appVersion, "login_token": token.loginToken, "book_id": book.id, "account": token.account}
-	body := httpGet(url, paramsMap)
+	res, err := httpGet(url, paramsMap)
+	if err != nil {
+		panic(err)
+	}
+	body, err := getBody(res)
+	check(err)
 	body = decode(body, initEncryptKey)
 	book.rolls = gjson.Get(body, "data.division_list.#.division_id").Array()
 	book.rollNum = len(book.rolls)
@@ -153,26 +180,40 @@ func getChapters() {
 }
 
 //获取章节内容
-func getChapterContent(chapterID string) (string, string, bool) {
+func getChapterContent(chapterID string) (string, string, bool, error) {
 	contentKeyURL := "https://app.hbooker.com/chapter/get_chapter_cmd?app_version=" + appVersion + "&chapter_id=" + chapterID + "&login_token=" + token.loginToken + "&account=" + token.account
 	paramsMap := map[string]string{"app_version": appVersion, "chapter_id": chapterID, "login_token": token.loginToken, "account": token.account}
-	keyBody := httpGet(contentKeyURL, paramsMap)
+	keyRes, err := httpGet(contentKeyURL, paramsMap)
+	if err != nil {
+		return "", "", true, err
+	}
+	keyBody, err := getBody(keyRes)
+	if err != nil {
+		return "", "", true, err
+	}
 	keyBody = decode(keyBody, initEncryptKey)
 	contentKey := gjson.Get(keyBody, "data.command").String()
 	contentURL := "https://app.hbooker.com/chapter/get_cpt_ifm"
 	paramsMap1 := map[string]string{"chapter_command": contentKey, "app_version": appVersion, "login_token": token.loginToken, "chapter_id": chapterID, "account": token.account}
-	contentBody := httpGet(contentURL, paramsMap1)
+	contentRes, err := httpGet(contentURL, paramsMap1)
+	if err != nil {
+		return "", "", true, err
+	}
+	contentBody, err := getBody(contentRes)
+	if err != nil {
+		return "", "", true, err
+	}
 	contentBody = decode(contentBody, initEncryptKey)
 	chapterTitle := gjson.Get(contentBody, "data.chapter_info.chapter_title").String()
 	content := gjson.Get(contentBody, "data.chapter_info.txt_content").String()
 	auth := gjson.Get(contentBody, "data.chapter_info.auth_access").String()
 	if len(content) == 0 {
 		book.invalidChapters.Store(chapterID, "1")
-		return "", "", false
+		return "", "", false, nil
 	}
 	if auth == "0" {
 		book.invalidChapters.Store(chapterID, "1")
-		return "", "", false
+		return "", "", false, nil
 	}
 	// validChapterNum++
 	content = decode(content, contentKey)
@@ -183,16 +224,16 @@ func getChapterContent(chapterID string) (string, string, bool) {
 		content = strings.Replace(content, "\n", "</p>", -1)
 		// chapterTitles = append(chapterTitles, chapterTitle)
 		book.chapters.Store(chapterID, chapterTitle)
-		return chapterTitle, contentHeader + "\n" + titleElement + "\n" + content + "\n" + contentFooter, true
+		return chapterTitle, contentHeader + "\n" + titleElement + "\n" + content + "\n" + contentFooter, true, nil
 	}
-	return chapterTitle, chapterTitle + "\n\n" + content + "\n\n\n\n", true
+	return chapterTitle, chapterTitle + "\n\n" + content + "\n\n\n\n", true, nil
 }
 
 //下载索引
 var di int
 
 //写出章节缓存
-func writeChapterTemp(chapterID string) {
+func writeChapterTemp(chapterID string, num int) {
 	var tmpPath string
 	var fileName string
 	if book.format == "epub" {
@@ -202,15 +243,33 @@ func writeChapterTemp(chapterID string) {
 		tmpPath = book.tmpPath
 		fileName = chapterID + ".txt"
 	}
-	_, content, result := getChapterContent(chapterID)
-	if result {
-		writeOut(content, tmpPath, fileName)
+	_, content, result, err := getChapterContent(chapterID)
+	if err != nil {
+		download.failedChapters = append(download.failedChapters, chapterID)
+	} else {
+		if result {
+			writeOut(content, tmpPath, fileName)
+		}
+		bar.Add(1)
 	}
-	bar.Add(1)
-	if di == book.chapterNum {
+	if di == num {
 		quit <- 1
 	}
 	di++
+}
+
+func redownlodChapters() {
+	di = 1
+	quit = make(chan int)
+	chapterIDs := download.failedChapters
+	download.failedChapters = download.failedChapters[:0]
+	for _, chapterID := range chapterIDs {
+		go writeChapterTemp(chapterID, len(chapterIDs))
+	}
+	<-quit
+	if len(download.failedChapters) != 0 {
+		redownlodChapters()
+	}
 }
 
 //下载章节
@@ -218,12 +277,18 @@ func downloadChapters() {
 	di = 1
 	bar = *progressbar.New(len(book.chapterIDs))
 	for _, chapterID := range book.chapterIDs {
-		go writeChapterTemp(chapterID.String())
+		go writeChapterTemp(chapterID.String(), book.chapterNum)
 	}
 	<-quit
+	redownlodChapters()
 	if book.format == "epub" {
 		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
-		coverBody := httpGet(book.coverURL, nil)
+		res, err := httpGet(book.coverURL, nil)
+		if err != nil {
+			panic(err)
+		}
+		coverBody, err := getBody(res)
+		check(err)
 		writeOut(mimetype, book.tmpPath, "mimetype")
 		writeOut(container, book.tmpPath+"META-INF"+pathSeparator, "container.xml")
 		writeOut(coverElement, book.tmpPath+"OEBPS"+pathSeparator, "cover.html")

@@ -21,6 +21,7 @@ var book cbook
 var token ctoken
 var path pathSettings
 var config *goconfig.ConfigFile
+var download cdownload
 
 type ctoken struct {
 	readerID   string
@@ -51,4 +52,8 @@ type cbook struct {
 	invalidChapters sync.Map
 	chapterIDs      []gjson.Result
 	rolls           []gjson.Result
+}
+
+type cdownload struct {
+	failedChapters []string
 }
