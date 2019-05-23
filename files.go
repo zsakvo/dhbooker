@@ -27,7 +27,7 @@ func mergeTemp() {
 	outPath := path.out + pathSeparator + book.name + ".txt"
 	tmpPath := book.tmpPath
 	for _, cid := range book.chapterIDs {
-		d, err := ioutil.ReadFile(tmpPath + cid.String() + ".txt")
+		d, err := ioutil.ReadFile(tmpPath + cid + ".txt")
 		if err == nil {
 			content = append(content, d...)
 		}

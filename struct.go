@@ -50,7 +50,7 @@ type cbook struct {
 	rollNum         int
 	chapters        sync.Map
 	invalidChapters sync.Map
-	chapterIDs      []gjson.Result
+	chapterIDs      []string
 	rolls           []gjson.Result
 }
 

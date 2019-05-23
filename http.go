@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/schollz/progressbar"
 	"github.com/tidwall/gjson"
 )
@@ -93,7 +94,7 @@ func loginByPass(account accountSettings) {
 		token.readerID = gjson.Get(localToken, "reader_info.reader_id").String()
 		token.loginToken = gjson.Get(localToken, "login_token").String()
 		token.account = gjson.Get(localToken, "reader_info.account").String()
-		clear()
+		println("登入成功，开始下载……")
 	}
 }
 
@@ -113,16 +114,16 @@ func loginByToken(localToken string) {
 	body = decode(body, initEncryptKey)
 	code := gjson.Get(body, "code").String()
 	if code != "100000" {
-		fmt.Println(gjson.Get(body, "tip"))
+		// fmt.Println(gjson.Get(body, "tip"))
 		fmt.Println("凭证登入失败，尝试使用用户密码登入")
 		account := getAccountSettings()
 		loginByPass(account)
 	} else {
-		clear()
+		println("登入成功，开始下载……")
 	}
 }
 
-//获取书籍名称
+//获取书籍信息
 func getBookInfo() {
 	if len(book.id) == 2 {
 		println("请至少输入书籍 ID")
@@ -147,37 +148,54 @@ func getBookInfo() {
 	book.author = gjson.Get(body, "data.book_info.author_name").String()
 	book.coverURL = gjson.Get(body, "data.book_info.cover").String()
 	book.tmpPath = path.tmp + pathSeparator + book.name + pathSeparator
-	fmt.Println("《" + book.name + "》")
-	getBookRolls()
-	getChapters()
-	fmt.Println("共" + strconv.Itoa(book.rollNum) + "卷，" + strconv.Itoa(book.chapterNum) + "章")
-}
+	// getBookRolls()
+	// getChapters()
 
-//获取分卷信息
-func getBookRolls() {
-	url := "https://app.hbooker.com/book/get_division_list"
-	paramsMap := map[string]string{"app_version": appVersion, "login_token": token.loginToken, "book_id": book.id, "account": token.account}
-	res, err := httpGet(url, paramsMap)
+	chapterListURL := "https://www.ciweimao.com/chapter-list/" + book.id + "/book_detail"
+	chapterListRes, err := httpGet(chapterListURL, nil)
 	if err != nil {
 		panic(err)
 	}
-	body, err := getBody(res)
-	check(err)
-	body = decode(body, initEncryptKey)
-	book.rolls = gjson.Get(body, "data.division_list.#.division_id").Array()
-	book.rollNum = len(book.rolls)
+	doc, err := goquery.NewDocumentFromReader(chapterListRes.Body)
+	if err != nil {
+		panic(err)
+	}
+	doms := doc.Find("ul[class=book-chapter-list]>li>a")
+	book.chapterNum = doms.Length()
+	doms.Each(func(i int, selection *goquery.Selection) {
+		attr, _ := selection.Attr("href")
+		id := strings.Replace(attr, "https://www.ciweimao.com/chapter/", "", -1)
+		// fmt.Println(a + "\t" + selection.Text())
+		book.chapterIDs = append(book.chapterIDs, id)
+	})
+	fmt.Println("《" + book.name + "》，" + "共" + strconv.Itoa(book.chapterNum) + "章")
 }
 
-//获取章节信息
-func getChapters() {
-	for _, roll := range book.rolls {
-		content := "last_update_time=0&app_version=" + appVersion + "&division_id=" + roll.String() + "&login_token=" + token.loginToken + "&account=" + token.account
-		body := httpPost("https://app.hbooker.com/chapter/get_updated_chapter_by_division_id", content)
-		body = decode(body, initEncryptKey)
-		book.chapterIDs = append(book.chapterIDs, gjson.Get(body, "data.chapter_list.#.chapter_id").Array()...)
-	}
-	book.chapterNum = len(book.chapterIDs)
-}
+// //获取分卷信息
+// func getBookRolls() {
+// 	url := "https://app.hbooker.com/book/get_division_list"
+// 	paramsMap := map[string]string{"app_version": appVersion, "login_token": token.loginToken, "book_id": book.id, "account": token.account}
+// 	res, err := httpGet(url, paramsMap)
+// 	if err != nil {
+// 		panic(err)
+// 	}
+// 	body, err := getBody(res)
+// 	check(err)
+// 	body = decode(body, initEncryptKey)
+// 	book.rolls = gjson.Get(body, "data.division_list.#.division_id").Array()
+// 	book.rollNum = len(book.rolls)
+// }
+
+// //获取章节信息
+// func getChapters() {
+// 	for _, roll := range book.rolls {
+// 		content := "last_update_time=0&app_version=" + appVersion + "&division_id=" + roll.String() + "&login_token=" + token.loginToken + "&account=" + token.account
+// 		body := httpPost("https://app.hbooker.com/chapter/get_updated_chapter_by_division_id", content)
+// 		body = decode(body, initEncryptKey)
+// 		book.chapterIDs = append(book.chapterIDs, gjson.Get(body, "data.chapter_list.#.chapter_id").Array()...)
+// 	}
+// 	book.chapterNum = len(book.chapterIDs)
+// }
 
 //获取章节内容
 func getChapterContent(chapterID string) (string, string, bool, error) {
@@ -208,11 +226,11 @@ func getChapterContent(chapterID string) (string, string, bool, error) {
 	content := gjson.Get(contentBody, "data.chapter_info.txt_content").String()
 	auth := gjson.Get(contentBody, "data.chapter_info.auth_access").String()
 	if len(content) == 0 {
-		book.invalidChapters.Store(chapterID, "1")
+		book.invalidChapters.Store(chapterID, nil)
 		return "", "", false, nil
 	}
 	if auth == "0" {
-		book.invalidChapters.Store(chapterID, "1")
+		book.invalidChapters.Store(chapterID, nil)
 		return "", "", false, nil
 	}
 	// validChapterNum++
@@ -277,7 +295,7 @@ func downloadChapters() {
 	di = 1
 	bar = *progressbar.New(len(book.chapterIDs))
 	for _, chapterID := range book.chapterIDs {
-		go writeChapterTemp(chapterID.String(), book.chapterNum)
+		go writeChapterTemp(chapterID, book.chapterNum)
 	}
 	<-quit
 	redownlodChapters()

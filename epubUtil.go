@@ -9,9 +9,9 @@ func genContentOpf() string {
 	var manifestStr string
 	var spineStr string
 	for i, chapterID := range book.chapterIDs {
-		_, ok := book.invalidChapters.Load(chapterID.String())
+		_, ok := book.invalidChapters.Load(chapterID)
 		if !ok {
-			manifestStr += "<item id=\"chapter" + strconv.Itoa(i) + "\" href=\"chapter" + chapterID.String() + ".html\" media-type=\"application/xhtml+xml\"/>"
+			manifestStr += "<item id=\"chapter" + strconv.Itoa(i) + "\" href=\"chapter" + chapterID + ".html\" media-type=\"application/xhtml+xml\"/>"
 			spineStr += "<itemref idref=\"chapter" + strconv.Itoa(i) + "\" linear=\"yes\"/>"
 		}
 	}
@@ -26,9 +26,9 @@ func genTocNcx() string {
 	navMap := "<navMap> <navPoint id=\"cover\" playOrder=\"1\"> <navLabel><text>封面</text></navLabel> <content src=\"cover.html\"/> </navPoint> <navPoint id=\"htmltoc\" playOrder=\"2\"> <navLabel><text>目录</text></navLabel> <content src=\"book-toc.html\"/> </navPoint>\""
 	var str string
 	for i, id := range book.chapterIDs {
-		title, ok := book.chapters.Load(id.String())
+		title, ok := book.chapters.Load(id)
 		if ok {
-			str += "<navPoint id=\"chapter" + strconv.Itoa(i) + "\" playOrder=\"" + strconv.Itoa(3+i) + "\"> <navLabel><text>" + title.(string) + "</text></navLabel> <content src=\"chapter" + book.chapterIDs[i].String() + ".html\"/> </navPoint>"
+			str += "<navPoint id=\"chapter" + strconv.Itoa(i) + "\" playOrder=\"" + strconv.Itoa(3+i) + "\"> <navLabel><text>" + title.(string) + "</text></navLabel> <content src=\"chapter" + book.chapterIDs[i] + ".html\"/> </navPoint>"
 		}
 	}
 	return tocNcxHeader + docTitle + docAuthor + navMap + str + tocNcxFooter
@@ -37,9 +37,9 @@ func genTocNcx() string {
 func genBookToc() string {
 	var str string
 	for _, id := range book.chapterIDs {
-		title, ok := book.chapters.Load(id.String())
+		title, ok := book.chapters.Load(id)
 		if ok {
-			str += "<dt class=\"tocl2\"><a href=\"chapter" + id.String() + ".html\">" + title.(string) + "</a></dt>"
+			str += "<dt class=\"tocl2\"><a href=\"chapter" + id + ".html\">" + title.(string) + "</a></dt>"
 		}
 	}
 	return bookTocHeader + str + bookTocFooter
