@@ -10,6 +10,13 @@ import (
 )
 
 func compressEpub(tmp, dst string) error {
+
+	//检测是否存在，若存在，则移除
+	if isFileExist(dst) {
+		err := os.Remove(dst)
+		check(err)
+	}
+
 	// 创建准备写入的文件
 	fw, err := os.Create(dst)
 	defer fw.Close()
