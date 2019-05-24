@@ -15,7 +15,6 @@ const initEncryptKey = "zG2nSeEfSHfvTCHy5LCcqtBbQehKNLXn"
 var ostype = runtime.GOOS
 var pathSeparator string
 
-// var bar progressbar.ProgressBar
 var bar *pb.ProgressBar
 var ping int64
 var book cbook
@@ -23,6 +22,13 @@ var token ctoken
 var path pathSettings
 var config *goconfig.ConfigFile
 var download cdownload
+
+var mobi cmobi
+
+type cmobi struct {
+	hint     bool
+	caliPath string
+}
 
 type ctoken struct {
 	readerID   string
