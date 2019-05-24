@@ -39,7 +39,7 @@ func mergeTemp() {
 //移除缓存
 func destoryTemp(b bool) error {
 	if b {
-		fmt.Println("正在清理临时目录")
+		// fmt.Println("正在清理临时目录")
 	}
 	d, err := os.Open(path.tmp)
 	if err != nil {
@@ -55,6 +55,9 @@ func destoryTemp(b bool) error {
 		if err != nil {
 			return err
 		}
+	}
+	if !b {
+		fmt.Println("下载完毕！")
 	}
 	return nil
 }

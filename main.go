@@ -8,4 +8,5 @@ func main() {
 	login()
 	getBookInfo()
 	downloadChapters()
+	destoryTemp(false)
 }
