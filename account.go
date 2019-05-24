@@ -37,7 +37,7 @@ func loginByToken(localToken string) {
 	code := gjson.Get(body, "code").String()
 	if code != "100000" {
 		// fmt.Println(gjson.Get(body, "tip"))
-		fmt.Println("凭证登入失败，尝试使用用户密码登入")
+		// fmt.Println("凭证登入失败，尝试使用用户密码登入")
 		account := getAccountSettings()
 		loginByPass(account)
 	} else {
