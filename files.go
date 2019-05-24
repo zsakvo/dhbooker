@@ -56,14 +56,11 @@ func destoryTemp(b bool) error {
 			return err
 		}
 	}
-	if !b {
-		fmt.Print("\n下载完毕")
-	}
 	return nil
 }
 
 //写出内容
-func writeOut(content, dirPath, fileName string) {
+func writeOut(content, dirPath, fileName string) error {
 	if !isFileExist(dirPath) {
 		err := os.MkdirAll(dirPath, os.ModePerm)
 		check(err)
@@ -71,5 +68,5 @@ func writeOut(content, dirPath, fileName string) {
 	outPath := dirPath + fileName
 	d := []byte(content)
 	err := ioutil.WriteFile(outPath, d, 0644)
-	check(err)
+	return err
 }

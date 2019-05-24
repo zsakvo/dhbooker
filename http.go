@@ -11,11 +11,15 @@ import (
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
-	"github.com/schollz/progressbar"
 	"github.com/tidwall/gjson"
+	pb "gopkg.in/cheggaaa/pb.v1"
 )
 
 var quit = make(chan int)
+var index (chan int)
+var downloadSuccess (chan string)
+var downloadFailed (chan string)
+var downloadChan (chan int)
 
 func getBody(res *http.Response) (string, error) {
 	resBody, err := ioutil.ReadAll(res.Body)
@@ -165,7 +169,7 @@ func getBookInfo() {
 	doms.Each(func(i int, selection *goquery.Selection) {
 		attr, _ := selection.Attr("href")
 		id := strings.Replace(attr, "https://www.ciweimao.com/chapter/", "", -1)
-		// fmt.Println(a + "\t" + selection.Text())
+		// fmt.Println(selection.Text())
 		book.chapterIDs = append(book.chapterIDs, id)
 	})
 	fmt.Println("《" + book.name + "》，" + "共" + strconv.Itoa(book.chapterNum) + "章")
@@ -198,16 +202,16 @@ func getBookInfo() {
 // }
 
 //获取章节内容
-func getChapterContent(chapterID string) (string, string, bool, error) {
+func getChapterContent(chapterID string) (string, int) {
 	contentKeyURL := "https://app.hbooker.com/chapter/get_chapter_cmd?app_version=" + appVersion + "&chapter_id=" + chapterID + "&login_token=" + token.loginToken + "&account=" + token.account
 	paramsMap := map[string]string{"app_version": appVersion, "chapter_id": chapterID, "login_token": token.loginToken, "account": token.account}
 	keyRes, err := httpGet(contentKeyURL, paramsMap)
 	if err != nil {
-		return "", "", true, err
+		return "", 2
 	}
 	keyBody, err := getBody(keyRes)
 	if err != nil {
-		return "", "", true, err
+		return "", 2
 	}
 	keyBody = decode(keyBody, initEncryptKey)
 	contentKey := gjson.Get(keyBody, "data.command").String()
@@ -215,42 +219,38 @@ func getChapterContent(chapterID string) (string, string, bool, error) {
 	paramsMap1 := map[string]string{"chapter_command": contentKey, "app_version": appVersion, "login_token": token.loginToken, "chapter_id": chapterID, "account": token.account}
 	contentRes, err := httpGet(contentURL, paramsMap1)
 	if err != nil {
-		return "", "", true, err
+		return "", 2
 	}
 	contentBody, err := getBody(contentRes)
 	if err != nil {
-		return "", "", true, err
+		return "", 2
 	}
 	contentBody = decode(contentBody, initEncryptKey)
 	chapterTitle := gjson.Get(contentBody, "data.chapter_info.chapter_title").String()
 	content := gjson.Get(contentBody, "data.chapter_info.txt_content").String()
 	auth := gjson.Get(contentBody, "data.chapter_info.auth_access").String()
-	if len(content) == 0 {
-		book.invalidChapters.Store(chapterID, nil)
-		return "", "", false, nil
-	}
 	if auth == "0" {
 		book.invalidChapters.Store(chapterID, nil)
-		return "", "", false, nil
+		return "", 1
 	}
-	// validChapterNum++
 	content = decode(content, contentKey)
-	// validChapterIDs = append(validChapterIDs, chapterID)
 	if book.format == "epub" {
 		titleElement := "<h2 id=\"title\" class=\"titlel2std\">" + chapterTitle + "</h2>"
 		content = strings.Replace(content, "　　", "<p class=\"a\">　　", -1)
 		content = strings.Replace(content, "\n", "</p>", -1)
 		// chapterTitles = append(chapterTitles, chapterTitle)
 		book.chapters.Store(chapterID, chapterTitle)
-		return chapterTitle, contentHeader + "\n" + titleElement + "\n" + content + "\n" + contentFooter, true, nil
+		return contentHeader + "\n" + titleElement + "\n" + content + "\n" + contentFooter, 0
 	}
-	return chapterTitle, chapterTitle + "\n\n" + content + "\n\n\n\n", true, nil
+	return chapterTitle + "\n\n" + content + "\n\n\n\n", 0
 }
 
 //下载索引
-var di int
+var downloadIndex int
 
 //写出章节缓存
+//预计使用channel来控制进度条，一旦完成一次网络请求，di即自增一次，不受结果影响
+//0为获取成功，1为尚未订阅，2为请求失败。当请求失败时进度条不走动
 func writeChapterTemp(chapterID string, num int) {
 	var tmpPath string
 	var fileName string
@@ -261,44 +261,167 @@ func writeChapterTemp(chapterID string, num int) {
 		tmpPath = book.tmpPath
 		fileName = chapterID + ".txt"
 	}
-	_, content, result, err := getChapterContent(chapterID)
-	if err != nil {
-		download.failedChapters = append(download.failedChapters, chapterID)
-	} else {
-		if result {
-			writeOut(content, tmpPath, fileName)
+	content, code := getChapterContent(chapterID)
+	switch {
+	case code == 0:
+		err := writeOut(content, tmpPath, fileName)
+		if err != nil {
+			// download.failedChapters = append(download.failedChapters, chapterID)
 		}
-		bar.Add(1)
+	case code == 1:
+		break
+	case code == 2:
+		// download.failedChapters = append(download.failedChapters, chapterID)
+		dfs <- chapterID
 	}
-	if di == num {
-		quit <- 1
-	}
-	di++
+	index <- code
 }
 
 func redownlodChapters() {
-	di = 1
-	quit = make(chan int)
+	downloadIndex = 0
 	chapterIDs := download.failedChapters
 	download.failedChapters = download.failedChapters[:0]
 	for _, chapterID := range chapterIDs {
 		go writeChapterTemp(chapterID, len(chapterIDs))
 	}
-	<-quit
-	if len(download.failedChapters) != 0 {
+
+	for {
+		select {
+		case ix, _ := <-index:
+			if ix < 2 {
+				bar.Increment()
+			}
+			downloadIndex++
+
+		case df, _ := <-dfs:
+			download.failedChapters = append(download.failedChapters, df)
+
+		}
+		watchChan(len(chapterIDs))
+
+		// result := watchChan(len(chapterIDs))
+		// switch {
+		// case result == 0:
+		// 	genBook()
+		// 	return
+		// case result == 1:
+		// 	break
+		// case result == 2:
+		// 	redownlodChapters()
+		// }
+		// if watchChan(len(chapterIDs)) {
+		// 	genBook()
+		// 	return
+		// }
+		// redownlodChapters()
+	}
+
+	// for ix := range index {
+	// 	downloadIndex++
+	// 	if ix < 2 {
+	// 		bar.Increment()
+	// 	}
+	// 	if downloadIndex == book.chapterNum {
+	// 		println(downloadIndex)
+	// 		if len(download.failedChapters) == 0 {
+	// 			close(index)
+	// 			genBook()
+	// 		} else {
+	// 			redownlodChapters()
+	// 		}
+	// 	}
+	// }
+}
+
+func watchChan(num int) {
+	if channelClosed {
+		return
+	}
+	if downloadIndex == num {
+		if len(download.failedChapters) == 0 {
+			close(index)
+			close(dfs)
+			channelClosed = true
+			genBook()
+		}
 		redownlodChapters()
 	}
 }
 
+var dfs (chan string)
+var channelClosed = false
+
 //下载章节
 func downloadChapters() {
-	di = 1
-	bar = *progressbar.New(len(book.chapterIDs))
+	downloadIndex = 0
+	// df := 0
+	index = make(chan int)
+	dfs = make(chan string)
+	println("正在下载：")
+	bar = pb.StartNew(book.chapterNum)
+	bar.ShowTimeLeft = false
+	// bar.SetWidth(80)
 	for _, chapterID := range book.chapterIDs {
 		go writeChapterTemp(chapterID, book.chapterNum)
 	}
-	<-quit
-	redownlodChapters()
+	// for {
+	// 	select {
+	// 	case ix, _ := <-index:
+	// 		if ix < 2 {
+	// 			bar.Increment()
+	// 		}
+	// 		downloadIndex++
+	// 	case df, _ := <-dfs:
+	// 		download.failedChapters = append(download.failedChapters, df)
+	// 	}
+	// 	watchChan(book.chapterNum)
+	// }
+
+	for {
+		select {
+		case ix, _ := <-index:
+			if ix < 2 {
+				bar.Increment()
+			}
+			downloadIndex++
+
+		case df, _ := <-dfs:
+			download.failedChapters = append(download.failedChapters, df)
+		}
+		watchChan(book.chapterNum)
+		// result := watchChan(book.chapterNum)
+		// switch {
+		// case result == 0:
+		// 	genBook()
+		// 	return
+		// case result == 1:
+		// 	break
+		// case result == 2:
+		// 	redownlodChapters()
+		// }
+	}
+
+	// for ix := range index {
+	// 	downloadIndex++
+	// 	if ix < 2 {
+	// 		bar.Increment()
+	// 	} else {
+	// 		df++
+	// 	}
+	// 	if downloadIndex == book.chapterNum {
+	// 		if len(download.failedChapters) == 0 {
+	// 			close(index)
+	// 			genBook()
+	// 		} else {
+	// 			println(df)
+	// 			println("\n" + strconv.Itoa(len(download.failedChapters)))
+	// 			// redownlodChapters()
+	// 		}
+	// 	}
+	// }
+}
+
+func genBook() {
 	if book.format == "epub" {
 		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
 		res, err := httpGet(book.coverURL, nil)
@@ -319,7 +442,10 @@ func downloadChapters() {
 	} else {
 		mergeTemp()
 	}
-	bar.Finish()
+	// bar.Finish()
+	bar.FinishPrint("下载完毕！")
+	destoryTemp(false)
+	os.Exit(0)
 }
 
 func login() {

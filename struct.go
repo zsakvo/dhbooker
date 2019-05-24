@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/Unknwon/goconfig"
-	"github.com/schollz/progressbar"
 	"github.com/tidwall/gjson"
+	"gopkg.in/cheggaaa/pb.v1"
 )
 
 const appVersion = "2.1.032"
@@ -15,7 +15,8 @@ const initEncryptKey = "zG2nSeEfSHfvTCHy5LCcqtBbQehKNLXn"
 var ostype = runtime.GOOS
 var pathSeparator string
 
-var bar progressbar.ProgressBar
+// var bar progressbar.ProgressBar
+var bar *pb.ProgressBar
 var ping int64
 var book cbook
 var token ctoken
