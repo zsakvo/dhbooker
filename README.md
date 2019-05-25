@@ -44,7 +44,7 @@
 
 ## 关于 mobi 格式
 
-经评估后感觉没有必要专门添加，如果有需要，请自行安装 Calibre，然后使用本程序下载对应书籍的 epub 以后使用 `ebook-covert xxx.epub xxx.mobi` 命令自行转换
+经评估后感觉没有必要专门添加，如果有需要，请自行安装 Calibre，然后使用本程序下载对应书籍的 epub 以后使用 `ebook-convert xxx.epub xxx.mobi` 命令自行转换
 
 ## 注意事项
 
