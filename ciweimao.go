@@ -119,7 +119,6 @@ func redownlodChapters() {
 
 func watchChan(num int) {
 	if channelClosed {
-		println("关了")
 		return
 	}
 	if downloadIndex == num {
@@ -170,7 +169,6 @@ func getChapterContent(chapterID string) (string, int) {
 		titleElement := "<h2 id=\"title\" class=\"titlel2std\">" + chapterTitle + "</h2>"
 		content = strings.Replace(content, "　　", "<p class=\"a\">　　", -1)
 		content = strings.Replace(content, "\n", "</p>", -1)
-		// chapterTitles = append(chapterTitles, chapterTitle)
 		book.chapters.Store(chapterID, chapterTitle)
 		return contentHeader + "\n" + titleElement + "\n" + content + "\n" + contentFooter, 0
 	}
@@ -201,24 +199,10 @@ func writeChapterTemp(chapterID string, num int) {
 }
 
 func genBook() {
-	if book.format == "epub" {
-		coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
-		res, err := httpGet(book.coverURL, nil)
-		if err != nil {
-			panic(err)
-		}
-		coverBody, err := getBody(res)
-		check(err)
-		writeOut(mimetype, book.tmpPath, "mimetype")
-		writeOut(container, book.tmpPath+"META-INF"+pathSeparator, "container.xml")
-		writeOut(coverElement, book.tmpPath+"OEBPS"+pathSeparator, "cover.html")
-		writeOut(coverBody, book.tmpPath+"OEBPS"+pathSeparator, "cover.jpg")
-		writeOut(css, book.tmpPath+"OEBPS"+pathSeparator, "style.css")
-		writeOut(genBookToc(), book.tmpPath+"OEBPS"+pathSeparator, "book-toc.html")
-		writeOut(genContentOpf(), book.tmpPath+"OEBPS"+pathSeparator, "content.opf")
-		writeOut(genTocNcx(), book.tmpPath+"OEBPS"+pathSeparator, "toc.ncx")
-		compressEpub(book.tmpPath, path.out+pathSeparator+book.name+".epub")
-	} else {
+	switch book.format {
+	case "epub":
+		genEpub()
+	case "txt":
 		mergeTemp()
 	}
 	bar.Finish()

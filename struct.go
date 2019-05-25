@@ -23,13 +23,6 @@ var path pathSettings
 var config *goconfig.ConfigFile
 var download cdownload
 
-var mobi cmobi
-
-type cmobi struct {
-	hint     bool
-	caliPath string
-}
-
 type ctoken struct {
 	readerID   string
 	loginToken string

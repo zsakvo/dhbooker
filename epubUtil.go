@@ -5,6 +5,25 @@ import (
 	"strings"
 )
 
+func genEpub() {
+	coverElement := coverHeader + "\n" + "<img src=\"cover.jpg\" alt=\"" + book.name + "\" />" + coverFooter
+	res, err := httpGet(book.coverURL, nil)
+	if err != nil {
+		panic(err)
+	}
+	coverBody, err := getBody(res)
+	check(err)
+	writeOut(mimetype, book.tmpPath, "mimetype")
+	writeOut(container, book.tmpPath+"META-INF"+pathSeparator, "container.xml")
+	writeOut(coverElement, book.tmpPath+"OEBPS"+pathSeparator, "cover.html")
+	writeOut(coverBody, book.tmpPath+"OEBPS"+pathSeparator, "cover.jpg")
+	writeOut(css, book.tmpPath+"OEBPS"+pathSeparator, "style.css")
+	writeOut(genBookToc(), book.tmpPath+"OEBPS"+pathSeparator, "book-toc.html")
+	writeOut(genContentOpf(), book.tmpPath+"OEBPS"+pathSeparator, "content.opf")
+	writeOut(genTocNcx(), book.tmpPath+"OEBPS"+pathSeparator, "toc.ncx")
+	compressEpub(book.tmpPath, path.out+pathSeparator+book.name+".epub")
+}
+
 func genContentOpf() string {
 	var manifestStr string
 	var spineStr string

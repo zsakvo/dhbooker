@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"strconv"
 
 	"github.com/Unknwon/goconfig"
 )
@@ -70,17 +69,6 @@ func getToken() string {
 	return tokenMap["token"]
 }
 
-func getMobi() {
-	mobiMap := getSection("mobi")
-	hintBool, err := strconv.ParseBool(mobiMap["hint"])
-	if err != nil {
-		mobi.hint = true
-	} else {
-		mobi.hint = hintBool
-	}
-	mobi.caliPath = mobiMap["calibre-path"]
-}
-
 func initSettings() {
 	os.Create("conf.ini")
 	cfg, err := goconfig.LoadConfigFile("conf.ini")
@@ -95,10 +83,6 @@ func initSettings() {
 	cfg.SetKeyComments("path", "tmp", "# 临时目录，必填")
 	cfg.SetValue("path", "out", "output")
 	cfg.SetKeyComments("path", "out", "# 输出目录，必填")
-	cfg.SetValue("mobi", "hint", "true")
-	cfg.SetKeyComments("mobi", "hint", "# 首次提示，只能为 true 或 false")
-	cfg.SetValue("mobi", "calibre-path", "")
-	cfg.SetKeyComments("mobi", "calibre-path", "# calibre 路径，请精确到 ebook-convert 可执行文件所在的目录")
 	err1 := goconfig.SaveConfigFile(cfg, "conf.ini")
 	check(err1)
 }
@@ -117,5 +101,4 @@ func initConfig() {
 	getConfig()
 	getPathSettings()
 	setSeparator()
-	getMobi()
 }
